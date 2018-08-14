@@ -7,10 +7,14 @@ services:
 
     webhook:
         build: .
-        command: bash -c "echo 'nothing todo'"
+        command: bash -c "python3 src/manage.py migrate --noinput && python3 src/manage.py collectstatic --noinput && python3 src/manage.py runserver 0.0.0.0:8000"
         ports:
             - 8000:8000
         depends_on:
             - mongodb
         volumes:
             - .:/code
+            - web-data:/code/www
+
+volumes:
+    web-data:

@@ -1,0 +1,5 @@
+src/www/
+__pycache__/*
+*.pyc
+*.pyo
+db.sqlite3

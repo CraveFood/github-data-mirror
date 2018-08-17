@@ -15,6 +15,8 @@ services:
         volumes:
             - .:/code
             - web-data:/code/www
+        env_file:
+            - webhook.env
 
 volumes:
     web-data:

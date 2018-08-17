@@ -26,6 +26,8 @@ SECRET_KEY = '19pie1v98)n4mkcor&u8q!(z=)mcl7p63c%k#vjfg#fg^c9i5('
 DEBUG = True
 
 ALLOWED_HOSTS = []
+if DEBUG:
+    ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -119,3 +121,6 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'www/static')
+
+GH_TOKEN = os.getenv('GHMIRROR_GH_TOKEN')
+GH_WEBHOOK_SECRET = os.getenv('GHMIRROR_GH_WEBHOOK_SECRET')

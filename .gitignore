@@ -3,3 +3,4 @@ __pycache__/*
 *.pyc
 *.pyo
 db.sqlite3
+webhook.env

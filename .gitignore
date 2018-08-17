@@ -4,3 +4,5 @@ __pycache__/*
 *.pyo
 db.sqlite3
 webhook.env
+*.swp
+*.swo

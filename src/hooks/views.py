@@ -13,6 +13,10 @@ from ghstuff import (get_collection_from_event, get_document_from_payload,
 # Logging settings
 LOGGER = logging.getLogger('ghmirror.hooks')
 
+event_mapping = {
+    'pull_request_review': 'pull_request',
+}
+
 
 @csrf_exempt
 @validate_secret
@@ -26,10 +30,20 @@ def webhook(request):
     action = data.get('action')
     LOGGER.info('Event action: %s', action)
 
-    document = get_document_from_payload(event, data)
-    doc_id = get_document_id(event, data, document)
+    mapped_event = event_mapping.get(event, event)
 
-    collection = get_collection_from_event(event)
+    document = get_document_from_payload(mapped_event, data)
+    if not document:
+        response = JsonResponse({
+            'status': 'ok',
+            'message': 'No document retrived from payload.',
+        })
+        response.status_code = 204
+        return response
+
+    doc_id = get_document_id(mapped_event, data, document)
+
+    collection = get_collection_from_event(mapped_event)
     collection.update({'_id': doc_id}, document, upsert=True)
 
     return JsonResponse({'status': 'ok'})

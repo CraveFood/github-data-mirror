@@ -77,6 +77,10 @@ def get_document_id(event, webhook_payload, document):
         doc_type = 'issue'
         _id = webhook_payload['issue']['number']
 
+    elif event == 'pull_request':
+        doc_type = 'pr'
+        _id = webhook_payload['pull_request']['number']
+
     return '{}/{}/{}'.format(doc_type, repo, _id)
 
 
@@ -86,6 +90,8 @@ def get_document_from_payload(event, webhook_payload):
         url = webhook_payload['release']['url']
     elif event == 'issues':
         url = webhook_payload['issue']['url']
+    elif event == 'pull_request':
+        url = webhook_payload['pull_request']['url']
 
     if url:
         response = ghclient.get(url=url)
@@ -101,6 +107,9 @@ def get_collection_from_event(event):
 
     elif event == 'issues':
         collection_name = 'issues'
+
+    elif event == 'pull_request':
+        collection_name = 'pull_requests'
 
     if collection_name:
         return getattr(ghdb, collection_name)

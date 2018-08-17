@@ -7,7 +7,8 @@ from pprint import pformat
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
-from ghstuff import validate_secret, ghclient, get_github_db
+from ghstuff import (get_collection_from_event, get_document_from_payload,
+                     get_document_id, validate_secret)
 
 # Logging settings
 LOGGER = logging.getLogger('ghmirror.hooks')
@@ -16,8 +17,6 @@ LOGGER = logging.getLogger('ghmirror.hooks')
 @csrf_exempt
 @validate_secret
 def webhook(request):
-    github_db = get_github_db()
-
     data = json.loads(request.body.decode('utf8'))
     LOGGER.debug(pformat(data))
 
@@ -27,15 +26,10 @@ def webhook(request):
     action = data.get('action')
     LOGGER.info('Event action: %s', action)
 
-    if event == 'release':
-        release_response = ghclient.get(url=data['release']['url'])
-        release = release_response.json()
-        doc_id = 'release/{}/{}'.format(
-            data['repository']['full_name'],
-            data['release']['id'],
-        )
-        release['_id'] = doc_id
+    document = get_document_from_payload(event, data)
+    doc_id = get_document_id(event, data, document)
 
-        github_db.releases.update({'_id': doc_id}, release, upsert=True)
+    collection = get_collection_from_event(event)
+    collection.update({'_id': doc_id}, document, upsert=True)
 
     return JsonResponse({'status': 'ok'})

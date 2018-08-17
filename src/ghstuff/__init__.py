@@ -64,3 +64,43 @@ ghclient = GithubClient()  # noqa
 def get_github_db():
     mongo_client = MongoClient(settings.MONGO_HOST, settings.MONGO_PORT)
     return mongo_client.github
+
+
+def get_document_id(event, webhook_payload, document):
+    repo = webhook_payload['repository']['full_name']
+
+    if event == 'release':
+        doc_type = 'release'
+        _id = webhook_payload['release']['tag_name']
+
+    elif event == 'issues':
+        doc_type = 'issue'
+        _id = webhook_payload['issue']['number']
+
+    return '{}/{}/{}'.format(doc_type, repo, _id)
+
+
+def get_document_from_payload(event, webhook_payload):
+    url = None
+    if event == 'release':
+        url = webhook_payload['release']['url']
+    elif event == 'issues':
+        url = webhook_payload['issue']['url']
+
+    if url:
+        response = ghclient.get(url=url)
+        return response.json()
+
+
+def get_collection_from_event(event):
+    ghdb = get_github_db()
+    collection_name = None
+
+    if event == 'release':
+        collection_name = 'releases'
+
+    elif event == 'issues':
+        collection_name = 'issues'
+
+    if collection_name:
+        return getattr(ghdb, collection_name)

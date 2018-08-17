@@ -1,5 +1,6 @@
 Django==2.1
 requests
+pymongo
 
 # dev only
 ipdb

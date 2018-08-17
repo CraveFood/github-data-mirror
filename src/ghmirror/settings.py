@@ -124,3 +124,6 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'www/static')
 
 GH_TOKEN = os.getenv('GHMIRROR_GH_TOKEN')
 GH_WEBHOOK_SECRET = os.getenv('GHMIRROR_GH_WEBHOOK_SECRET')
+
+MONGO_HOST = os.getenv('GH_MIRROR_MONGO_HOST', 'mongodb')
+MONGO_PORT = os.getenv('GH_MIRROR_MONGO_PORT', 27017)

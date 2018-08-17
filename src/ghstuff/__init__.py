@@ -7,8 +7,9 @@ import requests
 from functools import wraps
 
 from django.conf import settings
-from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
+
+from pymongo import MongoClient
 
 
 def validate_secret(func):
@@ -19,7 +20,10 @@ def validate_secret(func):
 
         signature = request.META.get('HTTP_X_HUB_SIGNATURE')
         if not signature or not signature.endswith(key):
-            response = JsonResponse({'error': "Signature doesn't match."})
+            response = JsonResponse({
+                'error': "Signature doesn't match.",
+                'status': 'error',
+            })
             response.status_code = 403
             return response
 
@@ -43,12 +47,20 @@ class GithubClient:
         if hasattr(requests, attr):
             method = getattr(requests, attr)
 
-            def func(uri, json=None, headers=None):
+            def func(uri=None, url=None, json=None, headers=None):
                 if not headers:
                     headers = {}
 
                 new_headers = dict(**headers, **self.auth_headers)
-                url = self.base_url + uri
+                if not url and uri:
+                    url = self.base_url + uri
                 return method(url, json=json, headers=new_headers)
 
             return func
+
+ghclient = GithubClient()  # noqa
+
+
+def get_github_db():
+    mongo_client = MongoClient(settings.MONGO_HOST, settings.MONGO_PORT)
+    return mongo_client.github

@@ -7,6 +7,7 @@ import requests
 from functools import wraps
 
 from django.conf import settings
+from django.core.management.color import color_style
 from django.http import JsonResponse
 
 from github import Github
@@ -136,7 +137,7 @@ def get_issues(repo_full_name):
     gh = Github(settings.GH_TOKEN)
     repo = gh.get_repo(repo_full_name)
 
-    for issue in repo.get_issues():
+    for issue in repo.get_issues(state='all'):
         store_document(issue.raw_data)
 
 
@@ -144,7 +145,7 @@ def get_pulls(repo_full_name):
     gh = Github(settings.GH_TOKEN)
     repo = gh.get_repo(repo_full_name)
 
-    for pull in repo.get_pulls():
+    for pull in repo.get_pulls(state='all'):
         store_document(pull.raw_data)
 
 
@@ -156,14 +157,45 @@ def get_releases(repo_full_name):
         store_document(release.raw_data)
 
 
-def get_events():
+def get_events(repo_full_name):
     gh = Github(settings.GH_TOKEN)
     ghdb = get_github_db()
 
-    for issue_raw in ghdb.issues.find():
+    search_for = {
+        'repository_url': {
+            '$regex': '{}$'.format(repo_full_name),
+        }
+    }
+    for issue_raw in ghdb.issues.find(search_for):
         issue = Issue(gh._Github__requester, {}, issue_raw, completed=True)
         issue_raw['events'] = []
         for event in issue.get_events():
             issue_raw['events'].append(event.raw_data)
 
         store_document(issue_raw)
+
+
+def sync_gh_data(organization_name):
+    colors = color_style()
+
+    gh = Github(settings.GH_TOKEN)
+    org = gh.get_organization(organization_name)
+
+    for repo in org.get_repos(organization_name):
+        print('\nSyncing data from repo {}'.format(repo.full_name))
+
+        print('Downloading releases... ', end='', flush=True)
+        get_releases(repo.full_name)
+        print(colors.SUCCESS('Done'), flush=True)
+
+        print('Downloading pull requests... ', end='', flush=True)
+        get_pulls(repo.full_name)
+        print(colors.SUCCESS('Done'), flush=True)
+
+        print('Downloading issues... ', end='', flush=True)
+        get_issues(repo.full_name)
+        print(colors.SUCCESS('Done'), flush=True)
+
+        print('Downloading issue events... ', end='', flush=True)
+        get_events(repo.full_name)
+        print(colors.SUCCESS('Done'), flush=True)

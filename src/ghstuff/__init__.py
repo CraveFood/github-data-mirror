@@ -207,18 +207,24 @@ def sync_gh_data(organization_name):
     for repo in org.get_repos(organization_name):
         print('\nSyncing data from repo {}'.format(repo.full_name))
 
-        print('Downloading releases... ', end='', flush=True)
-        get_releases(repo.full_name)
-        print(colors.SUCCESS('Done'), flush=True)
+        try:
+            print('Downloading releases... ', end='', flush=True)
+            get_releases(repo.full_name)
+            print(colors.SUCCESS('Done'), flush=True)
 
-        print('Downloading pull requests... ', end='', flush=True)
-        get_pulls(repo.full_name)
-        print(colors.SUCCESS('Done'), flush=True)
+            print('Downloading pull requests... ', end='', flush=True)
+            get_pulls(repo.full_name)
+            print(colors.SUCCESS('Done'), flush=True)
 
-        print('Downloading issues... ', end='', flush=True)
-        get_issues(repo.full_name)
-        print(colors.SUCCESS('Done'), flush=True)
+            print('Downloading issues... ', end='', flush=True)
+            get_issues(repo.full_name)
+            print(colors.SUCCESS('Done'), flush=True)
 
-        print('Downloading issue events... ', end='', flush=True)
-        get_events(repo.full_name)
-        print(colors.SUCCESS('Done'), flush=True)
+            print('Downloading issue events... ', end='', flush=True)
+            get_events(repo.full_name)
+            print(colors.SUCCESS('Done'), flush=True)
+
+        except KeyboardInterrupt:
+            print(colors.WARNING('Stopped to download repo data'),
+                  flush=True)
+            continue

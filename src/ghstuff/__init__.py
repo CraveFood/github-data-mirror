@@ -1,9 +1,11 @@
 
-import hmac
 import hashlib
+import hmac
+import time
 
 import requests
 
+from datetime import datetime
 from functools import wraps
 
 from django.conf import settings
@@ -39,6 +41,15 @@ def validate_secret(func):
 
         return func(request, *args, **kwargs)
     return decorator
+
+
+def wait_until(until_timestamp):
+    until_datetime = datetime.fromtimestamp(int(until_timestamp))
+    wait_seconds = (until_datetime - datetime.now()).total_seconds()
+    if wait_seconds > 0:
+        print('Waiting until {} ({} seconds)'.format(until_datetime,
+                                                     wait_seconds))
+        time.sleep(wait_seconds)
 
 
 class GithubClient:
@@ -133,12 +144,21 @@ def store_document(document):
     collection.update({'_id': doc_id}, document, upsert=True)
 
 
+def wait_for_rate(document):
+    remaining = int(document.raw_headers.get('x-ratelimit-remaining', 0))
+    reset_timestamp = int(document.raw_headers.get('x-ratelimit-reset', 0))
+
+    if remaining <= 50:
+        wait_until(reset_timestamp)
+
+
 def get_issues(repo_full_name):
     gh = Github(settings.GH_TOKEN)
     repo = gh.get_repo(repo_full_name)
 
     for issue in repo.get_issues(state='all'):
         store_document(issue.raw_data)
+        wait_for_rate(issue)
 
 
 def get_pulls(repo_full_name):
@@ -147,6 +167,7 @@ def get_pulls(repo_full_name):
 
     for pull in repo.get_pulls(state='all'):
         store_document(pull.raw_data)
+        wait_for_rate(pull)
 
 
 def get_releases(repo_full_name):
@@ -155,6 +176,7 @@ def get_releases(repo_full_name):
 
     for release in repo.get_releases():
         store_document(release.raw_data)
+        wait_for_rate(release)
 
 
 def get_events(repo_full_name):
@@ -171,6 +193,7 @@ def get_events(repo_full_name):
         issue_raw['events'] = []
         for event in issue.get_events():
             issue_raw['events'].append(event.raw_data)
+            wait_for_rate(event)
 
         store_document(issue_raw)
 

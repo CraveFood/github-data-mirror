@@ -7,8 +7,7 @@ from pprint import pformat
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
-from ghstuff import (get_collection_from_event, get_document_from_payload,
-                     get_document_id, validate_secret)
+from ghstuff import get_document_from_payload, store_document, validate_secret
 
 # Logging settings
 LOGGER = logging.getLogger('ghmirror.hooks')
@@ -41,9 +40,6 @@ def webhook(request):
         response.status_code = 204
         return response
 
-    doc_id = get_document_id(mapped_event, data, document)
-
-    collection = get_collection_from_event(mapped_event)
-    collection.update({'_id': doc_id}, document, upsert=True)
+    store_document(document)
 
     return JsonResponse({'status': 'ok'})

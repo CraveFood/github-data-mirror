@@ -9,7 +9,15 @@ from functools import wraps
 from django.conf import settings
 from django.http import JsonResponse
 
+from github import Github
 from pymongo import MongoClient
+
+
+COLLECTION_TO_DOC_TYPE = {
+    'issues': 'issues',
+    'pulls': 'pull_request',
+    'releases': 'release',
+}
 
 
 def validate_secret(func):
@@ -66,22 +74,33 @@ def get_github_db():
     return mongo_client.github
 
 
-def get_document_id(event, webhook_payload, document):
-    repo = webhook_payload['repository']['full_name']
+def get_collection_name(document):
+    url_type = document['url'].split('/')[-2]
+    return url_type
 
-    if event == 'release':
-        doc_type = 'release'
-        _id = webhook_payload['release']['tag_name']
 
-    elif event == 'issues':
-        doc_type = 'issue'
-        _id = webhook_payload['issue']['number']
+def get_doctype(document):
+    collection_name = get_collection_name(document)
+    return COLLECTION_TO_DOC_TYPE.get(collection_name)
 
-    elif event == 'pull_request':
-        doc_type = 'pr'
-        _id = webhook_payload['pull_request']['number']
 
-    return '{}/{}/{}'.format(doc_type, repo, _id)
+def get_document_id(document):
+    org, repo = document['url'].split('/')[-4:-2]
+    repo_full_name = '{}/{}'.format(org, repo)
+
+    doc_type = get_doctype(document)
+
+    if doc_type == 'release':
+        _id = document['tag_name']
+
+    elif doc_type == 'issues':
+        _id = document['number']
+
+    elif doc_type == 'pull_request':
+        _id = document['number']
+
+    if _id:
+        return '{}/{}/{}'.format(doc_type, repo_full_name, _id)
 
 
 def get_document_from_payload(event, webhook_payload):
@@ -98,18 +117,23 @@ def get_document_from_payload(event, webhook_payload):
         return response.json()
 
 
-def get_collection_from_event(event):
+def get_collection(document):
     ghdb = get_github_db()
-    collection_name = None
-
-    if event == 'release':
-        collection_name = 'releases'
-
-    elif event == 'issues':
-        collection_name = 'issues'
-
-    elif event == 'pull_request':
-        collection_name = 'pull_requests'
+    collection_name = get_collection_name(document)
 
     if collection_name:
         return getattr(ghdb, collection_name)
+
+
+def store_document(document):
+    doc_id = get_document_id(document)
+    collection = get_collection(document)
+    collection.update({'_id': doc_id}, document, upsert=True)
+
+
+def get_issues(repo_full_name):
+    gh = Github(settings.GH_TOKEN)
+    repo = gh.get_repo(repo_full_name)
+
+    for issue in repo.get_issues():
+        store_document(issue.raw_data)

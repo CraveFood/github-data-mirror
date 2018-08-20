@@ -4,3 +4,5 @@ pymongo
 
 # dev only
 ipdb
+
+PyGithub

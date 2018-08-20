@@ -10,6 +10,7 @@ from django.conf import settings
 from django.http import JsonResponse
 
 from github import Github
+from github.Issue import Issue
 from pymongo import MongoClient
 
 
@@ -137,3 +138,32 @@ def get_issues(repo_full_name):
 
     for issue in repo.get_issues():
         store_document(issue.raw_data)
+
+
+def get_pulls(repo_full_name):
+    gh = Github(settings.GH_TOKEN)
+    repo = gh.get_repo(repo_full_name)
+
+    for pull in repo.get_pulls():
+        store_document(pull.raw_data)
+
+
+def get_releases(repo_full_name):
+    gh = Github(settings.GH_TOKEN)
+    repo = gh.get_repo(repo_full_name)
+
+    for release in repo.get_releases():
+        store_document(release.raw_data)
+
+
+def get_events():
+    gh = Github(settings.GH_TOKEN)
+    ghdb = get_github_db()
+
+    for issue_raw in ghdb.issues.find():
+        issue = Issue(gh._Github__requester, {}, issue_raw, completed=True)
+        issue_raw['events'] = []
+        for event in issue.get_events():
+            issue_raw['events'].append(event.raw_data)
+
+        store_document(issue_raw)

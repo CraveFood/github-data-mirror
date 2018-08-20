@@ -127,7 +127,12 @@ def get_document_from_payload(event, webhook_payload):
 
     if url:
         response = ghclient.get(url=url)
-        return response.json()
+        document = response.json()
+
+        if event == 'issues':
+            document = get_events_for_document(document)
+
+        return document
 
 
 def get_collection(document):
@@ -179,8 +184,19 @@ def get_releases(repo_full_name):
         wait_for_rate(release)
 
 
-def get_events(repo_full_name):
+def get_events_for_document(raw_document):
     gh = Github(settings.GH_TOKEN)
+    document = Issue(gh._Github__requester, {}, raw_document, completed=True)
+
+    raw_document['events'] = []
+    for event in document.get_events():
+        raw_document['events'].append(event.raw_data)
+        wait_for_rate(event)
+
+    return raw_document
+
+
+def get_events(repo_full_name):
     ghdb = get_github_db()
 
     search_for = {
@@ -188,14 +204,10 @@ def get_events(repo_full_name):
             '$regex': '{}$'.format(repo_full_name),
         }
     }
-    for issue_raw in ghdb.issues.find(search_for):
-        issue = Issue(gh._Github__requester, {}, issue_raw, completed=True)
-        issue_raw['events'] = []
-        for event in issue.get_events():
-            issue_raw['events'].append(event.raw_data)
-            wait_for_rate(event)
 
-        store_document(issue_raw)
+    for issue in ghdb.issues.find(search_for):
+        issue = get_events_for_document(issue)
+        store_document(issue)
 
 
 def sync_gh_data(organization_name):

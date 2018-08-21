@@ -207,7 +207,7 @@ def get_events(repo_full_name):
         }
     }
 
-    for issue in ghdb.issues.find(search_for):
+    for issue in ghdb.issues.find(search_for, no_cursor_timeout=True):
         issue = get_events_for_document(issue)
         store_document(issue)
 

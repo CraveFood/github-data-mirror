@@ -49,7 +49,9 @@ def wait_until(until_timestamp):
     if wait_seconds > 0:
         print('Waiting until {} ({} seconds)'.format(until_datetime,
                                                      wait_seconds))
-        time.sleep(wait_seconds)
+        # Add 2 minutes to give GH sometime to actually
+        #   release the API limits
+        time.sleep(wait_seconds + 120)
 
 
 class GithubClient:

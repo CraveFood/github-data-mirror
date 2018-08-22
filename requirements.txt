@@ -1,8 +1,9 @@
 Django==2.1
-requests
+PyGithub
+gunicorn
 pymongo
+requests
 
 # dev only
 ipdb
 
-PyGithub

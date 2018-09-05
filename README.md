@@ -23,7 +23,7 @@ Each collection stores the exact return from the Github API for that object (wit
 
 Running using Docker Compose (usually local)
 ------------------------------------------------
-Note: This method requires that docker and docker-compose are previously installed in your machine.
+Note: This method requires that docker and docker-compose were previously installed on your machine.
 
 
 To run Github-data-mirror using Docker Compose you need to first set your environment variables in the file `webhook.env`. We currently have an example file named `webhook.env.example` that could be copied and changed.
@@ -38,7 +38,7 @@ Set the environment variables from the file `webhook.env`. Set the server and po
 
 Now just run the command `gunicorn ghmirror.wsgi:application`.
 
-If your Linux distro curretly runs using systemd here in an example of an unitfile you could use:
+If your Linux distro curretly runs using systemd here is an example of an unitfile you could use:
 ```
 [Unit]
 Description=Github Data Mirror
@@ -69,8 +69,8 @@ Configuring the organization Webhook
 
 Access Github webhook settings page for the organization and then click in the `Webhooks` option (the link should be something like `https://github.com/organizations/<orgname>/settings/hooks`).
 
-Click in `Add webhook`. In the Payload URL field add the URL of your service; in Content type choose `application/json` and in Secret add the Random string you previously set in your environment variables. Enable SSL verifications, select the option `Send me everything` and that's it.
+Click on `Add webhook`. In the Payload URL field add the URL of your service; in Content type choose `application/json` and in Secret, add the Random string you previously set in your environment variables. Enable SSL verifications, select the option `Send me everything` and that's it.
 
 You can also send a test payload to make sure your service is working.
 
-From now on your local MongoDB should be receiving every updates from the currently sync objects. 
+From now on, your local MongoDB should be receiving every updates from the currently synced objects. 

@@ -219,7 +219,7 @@ def sync_gh_data(organization_name, sync_repos):
     org = gh.get_organization(organization_name)
 
     for repo in org.get_repos(organization_name):
-        if repo.full_name not in sync_repos:
+        if sync_repos and repo.full_name not in sync_repos:
             continue
 
         print('\nSyncing data from repo {}'.format(repo.full_name))

@@ -212,13 +212,16 @@ def get_events(repo_full_name):
         store_document(issue)
 
 
-def sync_gh_data(organization_name):
+def sync_gh_data(organization_name, sync_repos):
     colors = color_style()
 
     gh = Github(settings.GH_TOKEN)
     org = gh.get_organization(organization_name)
 
     for repo in org.get_repos(organization_name):
+        if repo.full_name not in sync_repos:
+            continue
+
         print('\nSyncing data from repo {}'.format(repo.full_name))
 
         try:

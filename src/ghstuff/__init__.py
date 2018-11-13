@@ -136,12 +136,16 @@ def get_document_id(document):
 
 def get_document_from_payload(event, webhook_payload):
     url = None
+    document = None
+
     if event == 'release':
         url = webhook_payload['release']['url']
     elif event == 'issues':
         url = webhook_payload['issue']['url']
     elif event == 'pull_request':
         url = webhook_payload['pull_request']['url']
+    elif event == 'pull_request_review':
+        document = webhook_payload['review']
 
     if url:
         response = ghclient.get(url=url)
@@ -150,7 +154,7 @@ def get_document_from_payload(event, webhook_payload):
         if event == 'issues':
             document = get_events_for_document(document)
 
-        return document
+    return document
 
 
 def get_collection(document):

@@ -12,10 +12,6 @@ from ghstuff import get_document_from_payload, store_document, validate_secret
 # Logging settings
 LOGGER = logging.getLogger('ghmirror.hooks')
 
-event_mapping = {
-    'pull_request_review': 'pull_request',
-}
-
 
 @csrf_exempt
 @validate_secret
@@ -29,9 +25,7 @@ def webhook(request):
     action = data.get('action')
     LOGGER.info('Event action: %s', action)
 
-    mapped_event = event_mapping.get(event, event)
-
-    document = get_document_from_payload(mapped_event, data)
+    document = get_document_from_payload(event, data)
     if not document:
         response = JsonResponse({
             'status': 'ok',

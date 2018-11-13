@@ -14,6 +14,7 @@ from django.http import JsonResponse
 
 from github import Github
 from github.Issue import Issue
+from github.PullRequest import PullRequest
 from pymongo import MongoClient
 
 
@@ -21,6 +22,7 @@ COLLECTION_TO_DOC_TYPE = {
     'issues': 'issues',
     'pulls': 'pull_request',
     'releases': 'release',
+    'reviews': 'review',
 }
 
 
@@ -90,6 +92,12 @@ def get_github_db():
 
 
 def get_collection_name(document):
+    # Pull Request Review doesn't have an URL attribute
+    #   so we have to use html_url to find out the collection
+    html_url = document.get('html_url')
+    if html_url and 'pullrequestreview' in html_url:
+        return 'reviews'
+
     url_type = document['url'].split('/')[-2]
     return url_type
 
@@ -100,7 +108,12 @@ def get_doctype(document):
 
 
 def get_document_id(document):
-    org, repo = document['url'].split('/')[-4:-2]
+    if 'url' in document:
+        url = document['url']
+    elif 'html_url' in document:
+        url = document['html_url']
+
+    org, repo = url.split('/')[-4:-2]
     repo_full_name = '{}/{}'.format(org, repo)
 
     doc_type = get_doctype(document)
@@ -113,6 +126,9 @@ def get_document_id(document):
 
     elif doc_type == 'pull_request':
         _id = document['number']
+
+    elif doc_type == 'review':
+        _id = document['id']
 
     if _id:
         return '{}/{}/{}'.format(doc_type, repo_full_name, _id)
@@ -152,8 +168,8 @@ def store_document(document):
 
 
 def wait_for_rate(document):
-    remaining = int(document.raw_headers.get('x-ratelimit-remaining', 0))
-    reset_timestamp = int(document.raw_headers.get('x-ratelimit-reset', 0))
+    remaining = int(document._headers.get('x-ratelimit-remaining', 0))
+    reset_timestamp = int(document._headers.get('x-ratelimit-reset', 0))
 
     if remaining <= 50:
         wait_until(reset_timestamp)
@@ -175,6 +191,21 @@ def get_pulls(repo_full_name):
     for pull in repo.get_pulls(state='all'):
         store_document(pull.raw_data)
         wait_for_rate(pull)
+
+
+def get_reviews(repo_full_name):
+    gh = Github(settings.GH_TOKEN)
+    ghdb = get_github_db()
+
+    search_for = {
+        'base.repo.full_name': repo_full_name,
+    }
+
+    for raw_pull in ghdb.pulls.find(search_for, no_cursor_timeout=True):
+        pull = PullRequest(gh._Github__requester, {}, raw_pull, completed=True)
+        for review in pull.get_reviews():
+            store_document(review._rawData)
+            wait_for_rate(review)
 
 
 def get_releases(repo_full_name):
@@ -231,6 +262,10 @@ def sync_gh_data(organization_name, sync_repos):
 
             print('Downloading pull requests... ', end='', flush=True)
             get_pulls(repo.full_name)
+            print(colors.SUCCESS('Done'), flush=True)
+
+            print('Downloading pull requests reviews... ', end='', flush=True)
+            get_reviews(repo.full_name)
             print(colors.SUCCESS('Done'), flush=True)
 
             print('Downloading issues... ', end='', flush=True)

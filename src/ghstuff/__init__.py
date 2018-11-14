@@ -247,7 +247,10 @@ def get_events(repo_full_name):
         store_document(issue)
 
 
-def sync_gh_data(organization_name, sync_repos):
+def sync_gh_data(organization_name, sync_repos, types):
+    if not types:
+        types = ['issues', 'issue-events', 'pulls', 'pull-reviews', 'releases']
+
     colors = color_style()
 
     gh = Github(settings.GH_TOKEN)
@@ -260,25 +263,30 @@ def sync_gh_data(organization_name, sync_repos):
         print('\nSyncing data from repo {}'.format(repo.full_name))
 
         try:
-            print('Downloading releases... ', end='', flush=True)
-            get_releases(repo.full_name)
-            print(colors.SUCCESS('Done'), flush=True)
+            if 'releases' in types:
+                print('Downloading releases... ', end='', flush=True)
+                get_releases(repo.full_name)
+                print(colors.SUCCESS('Done'), flush=True)
 
-            print('Downloading pull requests... ', end='', flush=True)
-            get_pulls(repo.full_name)
-            print(colors.SUCCESS('Done'), flush=True)
+            if 'pulls' in types:
+                print('Downloading pull requests... ', end='', flush=True)
+                get_pulls(repo.full_name)
+                print(colors.SUCCESS('Done'), flush=True)
 
-            print('Downloading pull requests reviews... ', end='', flush=True)
-            get_reviews(repo.full_name)
-            print(colors.SUCCESS('Done'), flush=True)
+            if 'pull-reviews' in types:
+                print('Downloading PR reviews... ', end='', flush=True)
+                get_reviews(repo.full_name)
+                print(colors.SUCCESS('Done'), flush=True)
 
-            print('Downloading issues... ', end='', flush=True)
-            get_issues(repo.full_name)
-            print(colors.SUCCESS('Done'), flush=True)
+            if 'issues' in types:
+                print('Downloading issues... ', end='', flush=True)
+                get_issues(repo.full_name)
+                print(colors.SUCCESS('Done'), flush=True)
 
-            print('Downloading issue events... ', end='', flush=True)
-            get_events(repo.full_name)
-            print(colors.SUCCESS('Done'), flush=True)
+            if 'issue-events' in types:
+                print('Downloading issue events... ', end='', flush=True)
+                get_events(repo.full_name)
+                print(colors.SUCCESS('Done'), flush=True)
 
         except KeyboardInterrupt:
             print(colors.WARNING('Stopped to download repo data'),

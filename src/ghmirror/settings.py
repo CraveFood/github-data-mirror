@@ -130,3 +130,25 @@ GH_WEBHOOK_SECRET = os.getenv('GHMIRROR_GH_WEBHOOK_SECRET')
 
 MONGO_HOST = os.getenv('GHMIRROR_MONGO_HOST', 'mongodb')
 MONGO_PORT = os.getenv('GHMIRROR_MONGO_PORT', 27017)
+
+LOG_LEVEL = os.getenv('DJANGO_LOG_LEVEL', 'WARN')
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': LOG_LEVEL,
+        },
+        'ghmirror': {
+            'handlers': ['console'],
+            'level': LOG_LEVEL,
+        },
+    },
+}

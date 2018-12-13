@@ -199,12 +199,12 @@ def get_pulls(repo_full_name):
 
 def get_next_page(find_query, page_size=100):
     page_num = 0
-
     while True:
         pulls = []
         skip = page_size * page_num
-
-        for raw_pull in find_query.skip(skip).limit(page_size):
+        cursor = find_query.skip(skip).limit(page_size)
+        cloned_cursor = cursor.clone()
+        for raw_pull in cloned_cursor:
             pulls.append(raw_pull)
 
         if pulls:

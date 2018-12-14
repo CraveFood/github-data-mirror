@@ -197,6 +197,23 @@ def get_pulls(repo_full_name):
         wait_for_rate(pull)
 
 
+def get_next_page(find_query, page_size=100):
+    page_num = 0
+    while True:
+        pulls = []
+        skip = page_size * page_num
+        cursor = find_query.skip(skip).limit(page_size)
+        cloned_cursor = cursor.clone()
+        for raw_pull in cloned_cursor:
+            pulls.append(raw_pull)
+
+        if pulls:
+            page_num += 1
+            yield pulls
+        else:
+            break
+
+
 def get_reviews(repo_full_name):
     gh = Github(settings.GH_TOKEN)
     ghdb = get_github_db()
@@ -205,11 +222,13 @@ def get_reviews(repo_full_name):
         'base.repo.full_name': repo_full_name,
     }
 
-    for raw_pull in ghdb.pulls.find(search_for, no_cursor_timeout=True):
-        pull = PullRequest(gh._Github__requester, {}, raw_pull, completed=True)
-        for review in pull.get_reviews():
-            store_document(review._rawData)
-            wait_for_rate(review)
+    for page in get_next_page(ghdb.pulls.find(search_for)):
+        for raw_pull in page:
+            pull = PullRequest(gh._Github__requester, {}, raw_pull,
+                               completed=True)
+            for review in pull.get_reviews():
+                store_document(review._rawData)
+                wait_for_rate(review)
 
 
 def get_releases(repo_full_name):
@@ -242,9 +261,10 @@ def get_events(repo_full_name):
         }
     }
 
-    for issue in ghdb.issues.find(search_for, no_cursor_timeout=True):
-        issue = get_events_for_document(issue)
-        store_document(issue)
+    for page in get_next_page(ghdb.issues.find(search_for)):
+        for issue in page:
+            issue = get_events_for_document(issue)
+            store_document(issue)
 
 
 def sync_gh_data(organization_name, sync_repos, types):

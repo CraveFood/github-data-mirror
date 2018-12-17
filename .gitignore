@@ -6,3 +6,6 @@ db.sqlite3
 webhook.env
 *.swp
 *.swo
+.idea/
+venv
+.vscode

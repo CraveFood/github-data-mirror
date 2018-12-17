@@ -199,12 +199,19 @@ def get_pulls(repo_full_name):
 
 def get_next_page(find_query, page_size=100):
     page_num = 0
+    cursor = find_query.limit(page_size)
     while True:
         pulls = []
         skip = page_size * page_num
-        cursor = find_query.skip(skip).limit(page_size)
-        cloned_cursor = cursor.clone()
-        for raw_pull in cloned_cursor:
+
+        # After a cursor being evaluated, it cannot change the options anymore. However,
+        # using the clone return a new Cursor instance with options matching those that
+        # have been set on the current instance, even if the current instance has been
+        # partially or completely evaluated. After that we can change the skip option to
+        # get the next page
+        cursor = cursor.clone()
+        cursor = cursor.skip(skip)
+        for raw_pull in cursor:
             pulls.append(raw_pull)
 
         if pulls:

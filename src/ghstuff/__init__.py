@@ -135,7 +135,7 @@ def get_document_id(document):
         _id = document['id']
 
     elif doc_type == 'installation':
-        _id = document['installation']
+        _id = document['id']
 
     if _id:
         return '{}/{}/{}'.format(doc_type, repo_full_name, _id)

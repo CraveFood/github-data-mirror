@@ -23,6 +23,7 @@ COLLECTION_TO_DOC_TYPE = {
     'pulls': 'pull_request',
     'releases': 'release',
     'reviews': 'review',
+    'installation': 'installation',
 }
 
 
@@ -130,6 +131,9 @@ def get_document_id(document):
     elif doc_type == 'review':
         _id = document['id']
 
+    elif doc_type == 'installation':
+        _id = document['installation']
+
     if _id:
         return '{}/{}/{}'.format(doc_type, repo_full_name, _id)
 
@@ -146,6 +150,8 @@ def get_document_from_payload(event, webhook_payload):
         url = webhook_payload['pull_request']['url']
     elif event == 'pull_request_review':
         document = webhook_payload['review']
+    elif event == 'installation':
+        document = webhook_payload['installation']
 
     if url:
         response = ghclient.get(url=url)

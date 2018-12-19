@@ -12,7 +12,7 @@ from django.conf import settings
 from django.core.management.color import color_style
 from django.http import JsonResponse
 
-from github import Github
+from github import Github, GithubIntegration
 from github.Issue import Issue
 from github.PullRequest import PullRequest
 from pymongo import MongoClient
@@ -25,6 +25,33 @@ COLLECTION_TO_DOC_TYPE = {
     'reviews': 'review',
     'installations': 'installation',
 }
+
+
+def get_gh_token(org_name):
+    app_id = settings.GH_APP_IDENTIFIER
+    private_key = settings.GH_PRIVATE_KEY.replace(r'\n', "\n")
+    private_key = private_key.strip('"').strip("'")
+
+    if org_name and app_id and private_key:
+        ghdb = get_github_db()
+        installation = ghdb.installations.find_one(
+            {'account.login': org_name},
+        )
+        installation_id = installation['id']
+        account_id = installation['account']['id']
+
+        gh_integration = GithubIntegration(app_id, private_key)
+        return gh_integration.get_access_token(
+            installation_id,
+            account_id,
+        ).token
+
+    return settings.GH_TOKEN
+
+
+def get_gh_client(org_name):
+    token = get_gh_token(org_name)
+    return Github(token)
 
 
 def validate_secret(func):
@@ -83,8 +110,6 @@ class GithubClient:
                 return method(url, json=json, headers=new_headers)
 
             return func
-
-ghclient = GithubClient()  # noqa
 
 
 def get_github_db():
@@ -157,11 +182,16 @@ def get_document_from_payload(event, webhook_payload):
         document = webhook_payload['installation']
 
     if url:
+        org_name = document['repository']['owner']['login']
+
+        token = get_gh_token(org_name)
+        ghclient = GithubClient(token)
+
         response = ghclient.get(url=url)
         document = response.json()
 
         if event == 'issues':
-            document = get_events_for_document(document)
+            document = get_events_for_document(org_name, document)
 
     return document
 
@@ -188,8 +218,8 @@ def wait_for_rate(document):
         wait_until(reset_timestamp)
 
 
-def get_issues(repo_full_name):
-    gh = Github(settings.GH_TOKEN)
+def get_issues(org_name, repo_full_name):
+    gh = get_gh_client(org_name)
     repo = gh.get_repo(repo_full_name)
 
     for issue in repo.get_issues(state='all'):
@@ -197,8 +227,8 @@ def get_issues(repo_full_name):
         wait_for_rate(issue)
 
 
-def get_pulls(repo_full_name):
-    gh = Github(settings.GH_TOKEN)
+def get_pulls(org_name, repo_full_name):
+    gh = get_gh_client(org_name)
     repo = gh.get_repo(repo_full_name)
 
     for pull in repo.get_pulls(state='all'):
@@ -230,8 +260,8 @@ def get_next_page(find_query, page_size=100):
             break
 
 
-def get_reviews(repo_full_name):
-    gh = Github(settings.GH_TOKEN)
+def get_reviews(org_name, repo_full_name):
+    gh = get_gh_client(org_name)
     ghdb = get_github_db()
 
     search_for = {
@@ -247,8 +277,8 @@ def get_reviews(repo_full_name):
                 wait_for_rate(review)
 
 
-def get_releases(repo_full_name):
-    gh = Github(settings.GH_TOKEN)
+def get_releases(org_name, repo_full_name):
+    gh = get_gh_client(org_name)
     repo = gh.get_repo(repo_full_name)
 
     for release in repo.get_releases():
@@ -256,8 +286,8 @@ def get_releases(repo_full_name):
         wait_for_rate(release)
 
 
-def get_events_for_document(raw_document):
-    gh = Github(settings.GH_TOKEN)
+def get_events_for_document(org_name, raw_document):
+    gh = get_gh_client(org_name)
     document = Issue(gh._Github__requester, {}, raw_document, completed=True)
 
     raw_document['events'] = []
@@ -268,7 +298,7 @@ def get_events_for_document(raw_document):
     return raw_document
 
 
-def get_events(repo_full_name):
+def get_events(org_name, repo_full_name):
     ghdb = get_github_db()
 
     search_for = {
@@ -279,7 +309,7 @@ def get_events(repo_full_name):
 
     for page in get_next_page(ghdb.issues.find(search_for)):
         for issue in page:
-            issue = get_events_for_document(issue)
+            issue = get_events_for_document(org_name, issue)
             store_document(issue)
 
 
@@ -289,7 +319,7 @@ def sync_gh_data(organization_name, sync_repos, types):
 
     colors = color_style()
 
-    gh = Github(settings.GH_TOKEN)
+    gh = get_gh_client(organization_name)
     org = gh.get_organization(organization_name)
 
     for repo in org.get_repos(organization_name):
@@ -301,27 +331,27 @@ def sync_gh_data(organization_name, sync_repos, types):
         try:
             if 'releases' in types:
                 print('Downloading releases... ', end='', flush=True)
-                get_releases(repo.full_name)
+                get_releases(organization_name, repo.full_name)
                 print(colors.SUCCESS('Done'), flush=True)
 
             if 'pulls' in types:
                 print('Downloading pull requests... ', end='', flush=True)
-                get_pulls(repo.full_name)
+                get_pulls(organization_name, repo.full_name)
                 print(colors.SUCCESS('Done'), flush=True)
 
             if 'pull-reviews' in types:
                 print('Downloading PR reviews... ', end='', flush=True)
-                get_reviews(repo.full_name)
+                get_reviews(organization_name, repo.full_name)
                 print(colors.SUCCESS('Done'), flush=True)
 
             if 'issues' in types:
                 print('Downloading issues... ', end='', flush=True)
-                get_issues(repo.full_name)
+                get_issues(organization_name, repo.full_name)
                 print(colors.SUCCESS('Done'), flush=True)
 
             if 'issue-events' in types:
                 print('Downloading issue events... ', end='', flush=True)
-                get_events(repo.full_name)
+                get_events(organization_name, repo.full_name)
                 print(colors.SUCCESS('Done'), flush=True)
 
         except KeyboardInterrupt:

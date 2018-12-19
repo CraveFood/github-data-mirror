@@ -23,7 +23,7 @@ COLLECTION_TO_DOC_TYPE = {
     'pulls': 'pull_request',
     'releases': 'release',
     'reviews': 'review',
-    'installation': 'installation',
+    'installations': 'installation',
 }
 
 
@@ -96,8 +96,11 @@ def get_collection_name(document):
     # Pull Request Review doesn't have an URL attribute
     #   so we have to use html_url to find out the collection
     html_url = document.get('html_url')
-    if html_url and 'pullrequestreview' in html_url:
-        return 'reviews'
+    if html_url:
+        if 'pullrequestreview' in html_url:
+            return 'reviews'
+        elif 'installations' in html_url:
+            return 'installations'
 
     url_type = document['url'].split('/')[-2]
     return url_type

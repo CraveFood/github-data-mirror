@@ -27,6 +27,15 @@ COLLECTION_TO_DOC_TYPE = {
 }
 
 
+def get_gh_token():
+    return settings.GH_TOKEN
+
+
+def get_gh_client():
+    token = get_gh_token()
+    return Github(token)
+
+
 def validate_secret(func):
     @wraps(func)
     def decorator(request, *args, **kwargs):
@@ -189,7 +198,7 @@ def wait_for_rate(document):
 
 
 def get_issues(repo_full_name):
-    gh = Github(settings.GH_TOKEN)
+    gh = get_gh_client()
     repo = gh.get_repo(repo_full_name)
 
     for issue in repo.get_issues(state='all'):
@@ -198,7 +207,7 @@ def get_issues(repo_full_name):
 
 
 def get_pulls(repo_full_name):
-    gh = Github(settings.GH_TOKEN)
+    gh = get_gh_client()
     repo = gh.get_repo(repo_full_name)
 
     for pull in repo.get_pulls(state='all'):
@@ -231,7 +240,7 @@ def get_next_page(find_query, page_size=100):
 
 
 def get_reviews(repo_full_name):
-    gh = Github(settings.GH_TOKEN)
+    gh = get_gh_client()
     ghdb = get_github_db()
 
     search_for = {
@@ -248,7 +257,7 @@ def get_reviews(repo_full_name):
 
 
 def get_releases(repo_full_name):
-    gh = Github(settings.GH_TOKEN)
+    gh = get_gh_client()
     repo = gh.get_repo(repo_full_name)
 
     for release in repo.get_releases():
@@ -257,7 +266,7 @@ def get_releases(repo_full_name):
 
 
 def get_events_for_document(raw_document):
-    gh = Github(settings.GH_TOKEN)
+    gh = get_gh_client()
     document = Issue(gh._Github__requester, {}, raw_document, completed=True)
 
     raw_document['events'] = []
@@ -289,7 +298,7 @@ def sync_gh_data(organization_name, sync_repos, types):
 
     colors = color_style()
 
-    gh = Github(settings.GH_TOKEN)
+    gh = get_gh_client()
     org = gh.get_organization(organization_name)
 
     for repo in org.get_repos(organization_name):

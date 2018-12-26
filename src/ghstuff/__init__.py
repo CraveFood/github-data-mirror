@@ -14,8 +14,10 @@ from django.core.management.color import color_style
 from django.http import JsonResponse
 
 from github import Github
+from github.GithubException import UnknownObjectException
 from github.Issue import Issue
 from github.PullRequest import PullRequest
+
 from pymongo import MongoClient
 
 
@@ -281,9 +283,13 @@ def get_events_for_document(raw_document):
     document = Issue(gh._Github__requester, {}, raw_document, completed=True)
 
     raw_document['events'] = []
-    for event in document.get_events():
-        raw_document['events'].append(event.raw_data)
-        wait_for_rate(event)
+    try:
+        for event in document.get_events():
+            raw_document['events'].append(event.raw_data)
+            wait_for_rate(event)
+    except UnknownObjectException:
+        # If this object no longer exist don't do anything
+        pass
 
     return raw_document
 

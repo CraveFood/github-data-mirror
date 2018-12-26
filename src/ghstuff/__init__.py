@@ -4,6 +4,7 @@ import hmac
 import time
 
 import requests
+import urllib3
 
 from datetime import datetime
 from functools import wraps
@@ -32,8 +33,18 @@ def get_gh_token():
 
 
 def get_gh_client():
+    # Retry up to 5 times with the following intervals:
+    #    30, 60, 120, 240 and 480 seconds
+    num_retries = 5
+    retry = urllib3.util.retry.Retry(
+        total=num_retries,
+        read=num_retries,
+        connect=num_retries,
+        backoff_factor=30,
+        status_forcelist=(500, 502, 504),
+    )
     token = get_gh_token()
-    return Github(token)
+    return Github(token, retry=retry)
 
 
 def validate_secret(func):

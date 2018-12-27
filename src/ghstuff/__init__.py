@@ -4,6 +4,7 @@ import hmac
 import time
 
 import requests
+import urllib3
 
 from datetime import datetime
 from functools import wraps
@@ -13,8 +14,10 @@ from django.core.management.color import color_style
 from django.http import JsonResponse
 
 from github import Github
+from github.GithubException import UnknownObjectException
 from github.Issue import Issue
 from github.PullRequest import PullRequest
+
 from pymongo import MongoClient
 
 
@@ -25,6 +28,25 @@ COLLECTION_TO_DOC_TYPE = {
     'reviews': 'review',
     'installations': 'installation',
 }
+
+
+def get_gh_token():
+    return settings.GH_TOKEN
+
+
+def get_gh_client():
+    # Retry up to 5 times with the following intervals:
+    #    30, 60, 120, 240 and 480 seconds
+    num_retries = 5
+    retry = urllib3.util.retry.Retry(
+        total=num_retries,
+        read=num_retries,
+        connect=num_retries,
+        backoff_factor=30,
+        status_forcelist=(500, 502, 504),
+    )
+    token = get_gh_token()
+    return Github(token, retry=retry)
 
 
 def validate_secret(func):
@@ -189,7 +211,7 @@ def wait_for_rate(document):
 
 
 def get_issues(repo_full_name):
-    gh = Github(settings.GH_TOKEN)
+    gh = get_gh_client()
     repo = gh.get_repo(repo_full_name)
 
     for issue in repo.get_issues(state='all'):
@@ -198,7 +220,7 @@ def get_issues(repo_full_name):
 
 
 def get_pulls(repo_full_name):
-    gh = Github(settings.GH_TOKEN)
+    gh = get_gh_client()
     repo = gh.get_repo(repo_full_name)
 
     for pull in repo.get_pulls(state='all'):
@@ -231,7 +253,7 @@ def get_next_page(find_query, page_size=100):
 
 
 def get_reviews(repo_full_name):
-    gh = Github(settings.GH_TOKEN)
+    gh = get_gh_client()
     ghdb = get_github_db()
 
     search_for = {
@@ -248,7 +270,7 @@ def get_reviews(repo_full_name):
 
 
 def get_releases(repo_full_name):
-    gh = Github(settings.GH_TOKEN)
+    gh = get_gh_client()
     repo = gh.get_repo(repo_full_name)
 
     for release in repo.get_releases():
@@ -257,13 +279,17 @@ def get_releases(repo_full_name):
 
 
 def get_events_for_document(raw_document):
-    gh = Github(settings.GH_TOKEN)
+    gh = get_gh_client()
     document = Issue(gh._Github__requester, {}, raw_document, completed=True)
 
     raw_document['events'] = []
-    for event in document.get_events():
-        raw_document['events'].append(event.raw_data)
-        wait_for_rate(event)
+    try:
+        for event in document.get_events():
+            raw_document['events'].append(event.raw_data)
+            wait_for_rate(event)
+    except UnknownObjectException:
+        # If this object no longer exist don't do anything
+        pass
 
     return raw_document
 
@@ -289,7 +315,7 @@ def sync_gh_data(organization_name, sync_repos, types):
 
     colors = color_style()
 
-    gh = Github(settings.GH_TOKEN)
+    gh = get_gh_client()
     org = gh.get_organization(organization_name)
 
     for repo in org.get_repos(organization_name):

@@ -15,6 +15,7 @@ from django.http import JsonResponse
 
 from github import Github
 from github.GithubException import UnknownObjectException
+from github.GitRelease import GitRelease
 from github.Issue import Issue
 from github.PullRequest import PullRequest
 
@@ -309,6 +310,40 @@ def get_events(repo_full_name):
             store_document(issue)
 
 
+def erase_old_drafts(repo_full_name):
+    gh = get_gh_client()
+    ghdb = get_github_db()
+
+    search_for = {
+        'url': {
+            '$regex': '{}/releases/[0-9]+$'.format(repo_full_name),
+        },
+        'tag_name': {
+            '$regex': '^untagged-',
+        },
+    }
+
+    for page in get_next_page(ghdb.releases.find(search_for)):
+        for raw_release in page:
+            document = GitRelease(
+                gh._Github__requester,
+                {},
+                raw_release,
+                completed=False,
+            )
+            doc_id = raw_release['_id']
+
+            try:
+                # check if the object still exists
+                document.update()
+            except UnknownObjectException:
+                # if doesn't exist erase from mongo
+                ghdb.releases.remove({'_id': doc_id})
+            else:
+                # if still exist just update
+                ghdb.releases.update({'_id': doc_id}, document.raw_data)
+
+
 def sync_gh_data(organization_name, sync_repos, types):
     if not types:
         types = ['issues', 'issue-events', 'pulls', 'pull-reviews', 'releases']
@@ -325,6 +360,11 @@ def sync_gh_data(organization_name, sync_repos, types):
         print('\nSyncing data from repo {}'.format(repo.full_name))
 
         try:
+            if 'release-drafts' in types:
+                print('Erasing old draft...', end='', flush=True)
+                erase_old_drafts(repo.full_name)
+                print(colors.SUCCESS('Done'), flush=True)
+
             if 'releases' in types:
                 print('Downloading releases... ', end='', flush=True)
                 get_releases(repo.full_name)

@@ -360,14 +360,14 @@ def sync_gh_data(organization_name, sync_repos, types):
         print('\nSyncing data from repo {}'.format(repo.full_name))
 
         try:
-            if 'release-drafts' in types:
-                print('Erasing old draft...', end='', flush=True)
-                erase_old_drafts(repo.full_name)
+            if 'issues' in types:
+                print('Downloading issues... ', end='', flush=True)
+                get_issues(repo.full_name)
                 print(colors.SUCCESS('Done'), flush=True)
 
-            if 'releases' in types:
-                print('Downloading releases... ', end='', flush=True)
-                get_releases(repo.full_name)
+            if 'issue-events' in types:
+                print('Downloading issue events... ', end='', flush=True)
+                get_events(repo.full_name)
                 print(colors.SUCCESS('Done'), flush=True)
 
             if 'pulls' in types:
@@ -380,14 +380,14 @@ def sync_gh_data(organization_name, sync_repos, types):
                 get_reviews(repo.full_name)
                 print(colors.SUCCESS('Done'), flush=True)
 
-            if 'issues' in types:
-                print('Downloading issues... ', end='', flush=True)
-                get_issues(repo.full_name)
+            if 'release-drafts' in types:
+                print('Erasing old draft...', end='', flush=True)
+                erase_old_drafts(repo.full_name)
                 print(colors.SUCCESS('Done'), flush=True)
 
-            if 'issue-events' in types:
-                print('Downloading issue events... ', end='', flush=True)
-                get_events(repo.full_name)
+            if 'releases' in types:
+                print('Downloading releases... ', end='', flush=True)
+                get_releases(repo.full_name)
                 print(colors.SUCCESS('Done'), flush=True)
 
         except KeyboardInterrupt:
